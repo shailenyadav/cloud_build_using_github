@@ -1,0 +1,41 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud compute ssh <vm_name> \
+        --zone=us-central1-a \
+        --project=$PROJECT_ID \
+        --command='sudo apt update' \
+        --command='sudo apt upgrade -y' \
+        --command='sudo apt install php -y'
+    env:
+      - 'LOGGING_OPTION=CLOUD_LOGGING_ONLY'
+  - name: 'gcr.io/cloud-builders/git'
+    args: ['clone', 'https://github.com/shailenyadav/cloud_build_using_github.git', '/workspace/repo']
+  - name: 'ubuntu'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        rm /workspace/repo/cloudbuild.yaml
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$BRANCH_NAME" == "main" ]; then
+          echo "Hello World ! Main" > /workspace/repo/app.py
+        elif [ "$BRANCH_NAME" == "master" ]; then
+          echo "Hello World ! master" > /workspace/repo/app.py
+        elif [ "$BRANCH_NAME" == "test" ]; then
+          echo "Hello World ! Test" > /workspace/repo/app.py
+        else
+          echo "Hello World ! Unknown Branch" > /workspace/repo/app.py
+        fi
+        gcloud compute scp --recurse /workspace/repo <vm_name>:/testfolder/ \
+        --zone=us-central1-a \
+        --project=$PROJECT_ID
+logsBucket: <bucket_name>
